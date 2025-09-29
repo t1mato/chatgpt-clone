@@ -11,7 +11,8 @@
   },
   "dependencies": {
     "react": "19.0.0-rc-8b08e99e-20240713",
-    "react-dom": "19.0.0-rc-8b08e99e-20240713"
+    "react-dom": "19.0.0-rc-8b08e99e-20240713",
+    "react-router-dom": "^7.9.3"
   },
   "devDependencies": {
     "@types/react": "^18.3.3",
@@ -21,6 +22,6 @@
     "eslint-plugin-react": "^7.34.3",
     "eslint-plugin-react-hooks": "^4.6.2",
     "eslint-plugin-react-refresh": "^0.4.7",
-    "vite": "^5.3.4"
+    "vite": "^7.1.7"
   }
 }
