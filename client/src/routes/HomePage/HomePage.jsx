@@ -25,7 +25,7 @@ const HomePage = () => {
           <div className="bgContainer">
             <div className="bg"></div>
           </div>
-          <img src="/bot.png" alt="" className="bot" />
+          <img src="/walking-duck.gif" alt="" className="bot" />
           <div className="chat">
             <img 
               src={
@@ -33,7 +33,7 @@ const HomePage = () => {
                   ? "/human1.jpeg" 
                   : typingStatus === "human2" 
                   ? "/human2.jpeg" 
-                  : "bot.png"
+                  : "goose-honk.gif"
               } alt="" 
             />
             <TypeAnimation 
