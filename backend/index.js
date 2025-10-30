@@ -94,6 +94,31 @@ app.post("/api/chats", requireAuth(), async (req, res) => {
     }
 });
 
+app.get("/api/userchats", requireAuth(), async (req, res) => {
+  
+  const { userId } = getAuth(req)
+
+  try {
+    const userChats = await UserChats.find({ userId });
+    res.status(200).send(userChats[0].chats);
+  } catch (error) {
+    console.log(error);
+    res.status(500).send("Error fetching user chats!");
+  }
+})
+
+app.get("/api/chats/:id", requireAuth(), async (req, res) => {
+  const { userId } = getAuth(req)
+
+  try {
+    const chat = await Chat.findOne({ _id: req.params.id, userId });
+    res.status(200).send(chat);
+  } catch (error) {
+    console.log(error);
+    res.status(500).send("Error fetching chat!");
+  }
+})
+
 // Start the server and connect to the database
 app.listen(port, () => {
   connect()
