@@ -3,47 +3,63 @@ import "./ChatPage.css";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "react-router-dom";
 import Markdown from "react-markdown";
+import { ImageKitProvider, Image } from "@imagekit/react"
 
+/**
+ * ChatPage Component
+ * Displays the full chat interface for a specific conversation.
+ * - Fetches chat history dynamically based on the chat ID from the URL.
+ * - Renders message history with Markdown formatting.
+ * - Supports images via ImageKit integration.
+ * - Includes the <NewPrompt /> component for user input.
+ */
 const ChatPage = () => {
+  // Extract current route path to derive chat ID (last segment of the URL)
   const path = useLocation().pathname;
   const chatId = path.split("/").pop();
 
+  /**
+   * Fetch chat history using React Query.
+   * - The query key ["chat", chatId] ensures caching is scoped per chat.
+   * - Automatically refetches when chatId changes.
+   */
   const { isPending, error, data } = useQuery({
     queryKey: ["chat", chatId],
     queryFn: () =>
       fetch(`${import.meta.env.VITE_API_URL}/api/chats/${chatId}`, {
-        credentials: "include",
+        credentials: "include", // includes cookies foor authenticated requests
       }).then((res) => res.json()),
   });
 
+  // Render chat interface and handle loading/error/data states
   return (
     <div className="chatPage">
       <div className="wrapper">
         <div className="chat">
           {isPending
-            ? "Loading..."
+            ? "Loading..." // show loading state while fetching chat
             : error
-            ? "Something went wrong!"
+            ? "Something went wrong!" // simple error fallback
             : data?.history?.map((message, i) => (
               <>
-              {message.img && (
-                <ImageKitProvider urlEndpoint={import.meta.env.VITE_IMAGE_KIT_ENDPOINT}>
-                  <Image 
-                    src={message.img}
-                    height="300"
-                    width="400"
-                    transformation={[{width: 1200}]}
-                    loading="lazy"
-                    lqip={{active:true, quality:20}}
-                  />
-                </ImageKitProvider>
-              )}
-              <div className={message.role === "user" ? "message user": "message"} key={i}>
-                <Markdown>{message.parts[0].text}</Markdown>
-              </div>
+                {message.img && (
+                  <ImageKitProvider urlEndpoint={import.meta.env.VITE_IMAGE_KIT_ENDPOINT}>
+                    <Image 
+                      src={message.img}
+                      width="1200"
+                      transformation={[{width: 1200}]}
+                      loading="lazy"
+                      lqip={{active:true, quality:20}}
+                      style={{ width: "60%", height: "auto" }}
+                    />
+                  </ImageKitProvider>
+                )}
+                <div className={message.role === "user" ? "message user": "message"} key={i}>
+                  <Markdown>{message?.parts?.[0]?.text || ""}</Markdown>
+                </div>
               </>
             ))}
-          <NewPrompt />
+          {data && <NewPrompt data={data} />}
         </div>
       </div>
     </div>

@@ -4,10 +4,12 @@ import Upload from "../Upload/Upload";
 import { runModelStream } from "../../lib/gemini";
 import "./NewPrompt.css";
 import Markdown from "react-markdown";
+import { useNavigate } from "react-router-dom";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 const urlEndpoint = import.meta.env.VITE_IMAGE_KIT_ENDPOINT;
 
-const NewPrompt = () => {
+const NewPrompt = ({ data }) => {
   const [input, setInput] = useState("");
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState("");
@@ -21,64 +23,115 @@ const NewPrompt = () => {
   });
 
   const endRef = useRef(null);
+  const formRef = useRef(null);
 
   useEffect(() => {
     if (endRef.current) {
       endRef.current.scrollIntoView({ behavior: "smooth" });
-      // Runs after first render, scrolls to endRef element
     }
-  }, [question, answer, img.dbData]);
+  }, [data, question, answer, img.dbData]);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault(); // Prevent default form behavior
-    if (!input.trim() || isStreaming) return; // Ignore empty input
+  const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
-    setError("");
-    // set the submitted question, freeze input
-    setQuestion(input);
+  const mutation = useMutation({
+    mutationFn: () => {
+      return fetch(`${import.meta.env.VITE_API_URL}/api/chats/${data._id}`, {
+        method: "PUT",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          question: question.length ? question : undefined,
+          answer,
+          img: img.dbData?.filePath || undefined,
+        }),
+      }).then((res) => res.json());
+    },
+    onSuccess: () => {
+      queryClient
+        .invalidateQueries({ queryKey: ["chat", data._id] })
+        .then(() => {
+          formRef.current?.reset?.();
+          setQuestion("");
+          setAnswer("");
+          setImg({ isLoading: false, error: "", dbData: {}, aiData: {} });
+        });
+      navigate(`/dashboard/chats/${data?._id}`);
+    },
+    onError: (err) => {
+      console.log(err);
+    },
+  });
+
+  // --- NEW: unified add() like the commented version, but using runModelStream ---
+  const add = async (text, isInitial) => {
+    if (!text?.trim() || isStreaming) return;
+
+    // Mirror original behavior: only set question for non-initial calls
+    if (!isInitial) setQuestion(text);
     setAnswer("");
+    setError("");
     setIsStreaming(true);
 
     try {
-      for await (const chunk of runModelStream(input, img.aiData)) {
-        setAnswer((prev) => prev + chunk);
+      let accumulated = "";
+      for await (const chunk of runModelStream(text, img.aiData)) {
+        accumulated += chunk;
+        setAnswer(accumulated);
       }
+      // Persist this turn after the stream finishes
+      mutation.mutate();
     } catch (err) {
       console.error(err);
       setError(err?.message || "Something went wrong while streaming.");
     } finally {
       setIsStreaming(false);
-      // clear image selection post-turn (keeps UX clean)
-      setImg({isLoading: false, error: "", dbData: {}, aiData: {} });
-      setInput("");
+      setInput(""); // clear input after a turn
     }
+  };
+  // ------------------------------------------------------------------------------
+
+  // --- NEW: auto-run the very first message of a brand-new chat (like your comment) ---
+  const hasRun = useRef(false);
+  useEffect(() => {
+    if (hasRun.current) return;
+    const firstUserOnly =
+      Array.isArray(data?.history) &&
+      data.history.length === 1 &&
+      data.history[0]?.role === "user" &&
+      data.history[0]?.parts?.[0]?.text;
+
+    if (firstUserOnly) {
+      add(data.history[0].parts[0].text, true);
+    }
+    hasRun.current = true;
+  }, [data]); // run once when chat data is available
+  // ------------------------------------------------------------------------------------
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    // Route through add() so all streaming & persistence happens in one place
+    await add(input, false);
   };
 
   return (
     <>
-      {/* ADD NEW CHAT */}
       <ImageKitProvider urlEndpoint={urlEndpoint}>
-        {/* Provide urlEndpoint to nested <Image /> components */}
-
-        {/* Show uploaded image */}
         {img.isLoading && <div>Loading...</div>}
 
-        {/* Show uploaded image preview */}
         {img.dbData?.filePath && (
           <Image
             src={img.dbData.filePath}
             alt="Uploaded"
             width="1200"
-            transformation={[{ width: 1200 }]} // resize on CDN
+            transformation={[{ width: 1200 }]}
             loading="lazy"
             style={{ width: "60%", height: "auto" }}
           />
         )}
 
-        {/* User question */}
         {question && <div className="message user">{question}</div>}
 
-        {/* AI answer */}
         {(answer || isStreaming) && (
           <div className="message">
             <Markdown>{answer || ""}</Markdown>
@@ -87,11 +140,9 @@ const NewPrompt = () => {
           </div>
         )}
 
-        {/* Scroll anchor */}
         <div className="endChat" ref={endRef}></div>
 
-        {/* Input form */}
-        <form className="newForm" onSubmit={handleSubmit}>
+        <form className="newForm" onSubmit={handleSubmit} ref={formRef}>
           <Upload setImg={setImg} />
           <input id="file" type="file" multiple={false} hidden />
           <input
