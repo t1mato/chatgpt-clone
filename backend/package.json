@@ -5,19 +5,25 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "nodemon index.js"
+    "start": "nodemon index.js",
+    "start:prod": "node index.js",
+    "docker:build": "docker build -t talkgoose-backend .",
+    "docker:run": "docker run -p 3000:3000 --env-file ../.env talkgoose-backend"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "module",
   "dependencies": {
-    "@clerk/express": "^1.7.43",
+    "@clerk/express": "^1.7.48",
+    "compression": "^1.8.1",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
+    "express-rate-limit": "^8.2.1",
+    "helmet": "^8.1.0",
     "imagekit": "^6.0.0",
-    "mongoose": "^8.19.2",
-    "nodemon": "^3.1.10"
+    "mongoose": "^8.19.3",
+    "nodemon": "^3.1.11"
   }
 }
