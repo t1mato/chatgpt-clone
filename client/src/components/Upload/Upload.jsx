@@ -1,15 +1,10 @@
 /**
  * Upload.jsx
  * ----------
- * Handles image uploads to ImageKit and prepares base64 data
- * for Gemini (AI multimodal input).
- * 
- * Dependencies:
- * - @imagekit/react
- * - React
- * 
- * Expects parent to pass: 
- *   setImg: function to update image state in parent component
+ * Purpose:
+ * - Let users pick an image file.
+ * - Upload it to ImageKit via signed uploads (secure, short-lived creds).
+ * - Convert the file to Gemini's inlineData format for multimodal prompts.
  */
 
  import {
@@ -17,7 +12,7 @@
   ImageKitInvalidRequestError,
   ImageKitServerError,
   ImageKitUploadNetworkError,
-  upload, // Upload function that sends files to ImageKit CDN
+  upload, // SDK method: performs the actual upload to ImageKit
 } from "@imagekit/react";
 import { useRef } from "react";
 
@@ -25,7 +20,7 @@ import { useRef } from "react";
 const PUBLIC_KEY = import.meta.env.VITE_IMAGE_KIT_PUBLIC_KEY;
 
 /**
- * Authenticator function
+ * authenticator()
  * ----------------------
  * Fetches short-lived credentials (token, expire, signature)
  * from your Express backend endpoint for secure uploads.
@@ -51,8 +46,11 @@ const authenticator = async () => {
 };
 
 /**
- * Converts a File into a format suitable for Gemini multimodal API.
- * Reads the file as a base64 string, returns an inlineData object.
+ * fileToGenerativePart(file)
+ * 
+ * Reads a File into a base64 data URL, strips the prefix, and returns
+ * the Gemini "inlineData" object: { inlineData: { data, mimeType } }.
+ * This lets you pass the image directly to the model without hosting.
  */
 const fileToGenerativePart = (file) =>
   new Promise((resolve, reject) => {
@@ -73,22 +71,33 @@ const fileToGenerativePart = (file) =>
 
 /**
  * Upload Component
- * ----------------
- * - Allows the user to select an image file.
- * - Uploads the file to ImageKit using signed upload authentication.
- * - Sends base64 image data to the parent for Gemini API use.
+ * 
+ * UX: 
+ * - Hidden <input type ="file">. clicking the paperclip image opens the picker.
+ * - On selection:
+ *   1) Mark loading
+ *   2) Convert file for Gemini (aiData)
+ *   3) Fetch ImageKit auth
+ *   4) Upload to ImageKit (dbData)
+ *   5) Reset input for next selection
  */
 export default function Upload({ setImg }) {
-  const ikUploadRef = useRef(null);
+  const ikUploadRef = useRef(null); 
   const fileInputRef = useRef(null);
 
   // Trigger file picker dialog
   const handlePick = () => fileInputRef.current?.click();
 
-  // Handles file selection and upload process
+  /**
+   * handleUpload()
+   *
+   * Runs when user picks a file.
+   * Manages conversion + auth + upload, updating the parent's image state.
+   */
   const handleUpload = async () => {
     const el = fileInputRef.current;
 
+    // Guard: no file chosen
     if (!el || !el.files || el.files.length === 0) {
       alert("Please select a file to upload");
       return;
@@ -96,12 +105,25 @@ export default function Upload({ setImg }) {
 
     const file = el.files[0];
 
-    // Mark as loading
+    // Performance tracking metrics
+    const uploadMetrics = {
+      startTime: Date.now(),
+      fileSize: file.size,
+      fileName: file.name,
+      fileType: file.type,
+      fileReadTime: 0,
+      authTime: 0,
+      uploadTime: 0,
+    };
+
+    // Mark as loading; clear any previous error
     setImg((prev) => ({ ...prev, isLoading: true, error: "" }));
 
-    // Convert file to Gemini's required inlineData format
+    // Step 1: Convert file to Gemini inlineData
+    const fileReadStart = Date.now();
     try {
       const aiPart = await fileToGenerativePart(file);
+      uploadMetrics.fileReadTime = Date.now() - fileReadStart;
       setImg((prev) => ({ ...prev, aiData: aiPart }));
     } catch (e) {
       console.error("Failed to read file for AI part:", e);
@@ -110,14 +132,17 @@ export default function Upload({ setImg }) {
         isLoading: false,
         error: "Failed to read file for AI",
       }));
+      // Reset input so the same filename can be re-selected
       if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }
 
-    // Get ImageKit auth credentials
+    // Step 2: Get ImageKit auth credentials from server
+    const authStart = Date.now();
     let auth;
     try {
       auth = await authenticator();
+      uploadMetrics.authTime = Date.now() - authStart;
     } catch (e) {
       console.error("Failed to authenticate for upload:", e);
       setImg((prev) => ({
@@ -129,20 +154,39 @@ export default function Upload({ setImg }) {
       return;
     }
 
-    // Perform the upload
+    // Step 3: Perform the upload to ImageKit
+    const uploadStart = Date.now();
     try {
       const res = await upload({
-        publicKey: PUBLIC_KEY, // identifies ImageKit account
-        file, // file chosen by user
-        fileName: file.name, // desired name at destination
-        token: auth.token,
-        expire: auth.expire,
-        signature: auth.signature,
+        publicKey: PUBLIC_KEY, // Client-safe key; server uses the private key to sign
+        file,                  // The raw File object
+        fileName: file.name,   // Destination name
+        token: auth.token,     // Short-lived token from your server
+        expire: auth.expire,   // Expiry of the tkoen
+        signature: auth.signature, // Signature proves the request is authorized
       });
+
+      uploadMetrics.uploadTime = Date.now() - uploadStart;
+
+      // Calculate performance metrics
+      const totalTime = Date.now() - uploadMetrics.startTime;
+      const fileSizeMB = uploadMetrics.fileSize / (1024 * 1024);
+      const uploadSpeedMBps = fileSizeMB / (uploadMetrics.uploadTime / 1000);
+
+      console.log(
+        `%c[IMAGE UPLOAD PERF]`,
+        'color: #2196F3; font-weight: bold',
+        `\n  File: ${uploadMetrics.fileName} (${fileSizeMB.toFixed(2)} MB)` +
+        `\n  File read time: ${uploadMetrics.fileReadTime}ms` +
+        `\n  Auth time: ${uploadMetrics.authTime}ms` +
+        `\n  Upload time: ${uploadMetrics.uploadTime}ms` +
+        `\n  Total time: ${totalTime}ms` +
+        `\n  Upload speed: ${uploadSpeedMBps.toFixed(2)} MB/s`
+      );
 
       console.log("Upload response:", res);
 
-      // Update parent state with uploaded file data
+      // Success: hand DB/host metadata back to the parent (e.g., url, filePath)
       setImg((prev) => ({
         ...prev,
         isLoading: false,
@@ -150,9 +194,9 @@ export default function Upload({ setImg }) {
         error: "",
       }));
     } catch (error) {
+      // Normalize SDK error surface into friendly message
       let msg = "Upload failed";
 
-      // Handle specific ImageKit error types
       if (error instanceof ImageKitAbortError) {
         console.error("Upload aborted:", error.reason);
         msg = "Upload was aborted";
@@ -172,7 +216,7 @@ export default function Upload({ setImg }) {
 
       setImg((prev) => ({ ...prev, isLoading: false, error: msg }));
     } finally {
-      // Reset input for next upload
+      // Always clear the file input so subsequent selections fire onChange
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };

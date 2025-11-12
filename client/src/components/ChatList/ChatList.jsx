@@ -37,7 +37,7 @@ const ChatList = () => {
             {isPending 
               ? "Loading..." 
               : error 
-              ? "Something went wrong!" 
+              ? "There are no chats to show!" 
               : data?.map((chat) => (
                 <Link to={`/dashboard/chats/${chat._id}`} key={chat._id}>
                   {chat.title}

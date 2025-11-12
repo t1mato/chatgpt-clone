@@ -2,6 +2,7 @@ import './RootLayout.css'
 import { Link, Outlet } from 'react-router-dom'
 import { ClerkProvider, SignedIn, UserButton } from '@clerk/clerk-react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { ChatSessionProvider } from '../../contexts/ChatSessionContext'
 
 // Import your publishable key
 const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
@@ -16,7 +17,8 @@ const RootLayout = () => {
   return (
     <ClerkProvider publishableKey={PUBLISHABLE_KEY} afterSignOutUrl="/">
       <QueryClientProvider client={queryClient}>
-        <div className="rootLayout">
+        <ChatSessionProvider>
+          <div className="rootLayout">
             <header>
                 <Link to="/" className="logo">
                     <img src="/logo.png" alt="TIM AI IMAGE" />
@@ -30,9 +32,10 @@ const RootLayout = () => {
             </header>
             <main>
                 {/* Used as a placeholder that gets swapped with the element in main.jsx route */}
-                <Outlet /> 
+                <Outlet />
             </main>
-        </div>
+          </div>
+        </ChatSessionProvider>
       </QueryClientProvider>
     </ClerkProvider>
   )

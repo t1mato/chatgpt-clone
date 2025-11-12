@@ -391,6 +391,8 @@ const imagekit = new ImageKit({
 // API ROUTES
 // ============================================================================
 
+app.get("/health", (req, res) => res.send("Healthy"));
+
 /**
  * GET /api/upload - Generate Image Upload Token
  * ==============================================

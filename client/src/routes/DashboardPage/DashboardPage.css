@@ -27,7 +27,7 @@
 
             h1 {
                 font-size: 64px;
-                background: linear-gradient(to right, #217bfe, #e55571);
+                background: linear-gradient(to right, #ff7400, #ffffff, #ffde1a);
                 background-clip: text;
                 -webkit-background-clip: text;
                 color: transparent;
@@ -47,7 +47,7 @@
                 flex-direction: column;
                 gap: 10px;
                 font-weight: 300;
-                font-size: 14px;
+                font-size: 18px;
                 padding: 20px;
                 border: 1px solid #555;
                 border-radius: 20px;
