@@ -1,0 +1,95 @@
+# Docker Compose configuration for Talk Talk Goose
+# Full-stack orchestration: Frontend (nginx) + Backend (Express) + Optional MongoDB
+
+version: '3.8'
+
+services:
+  # Backend Service - Express API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: talkgoose-backend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      # MongoDB connection (use Atlas in production, local MongoDB for dev)
+      MONGO: ${MONGO}
+
+      # Clerk authentication
+      CLERK_PUBLISHABLE_KEY: ${CLERK_PUBLISHABLE_KEY}
+      CLERK_SECRET_KEY: ${CLERK_SECRET_KEY}
+
+      # ImageKit CDN
+      IMAGE_KIT_ENDPOINT: ${IMAGE_KIT_ENDPOINT}
+      IMAGE_KIT_PUBLIC_KEY: ${IMAGE_KIT_PUBLIC_KEY}
+      IMAGE_KIT_PRIVATE_KEY: ${IMAGE_KIT_PRIVATE_KEY}
+
+      # Server configuration
+      CLIENT_URL: ${CLIENT_URL:-http://localhost}
+      PORT: 3000
+      NODE_ENV: production
+    networks:
+      - talkgoose-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/api/metrics"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    # Uncomment for development with live reload
+    # volumes:
+    #   - ./backend:/app
+    #   - /app/node_modules
+
+  # Frontend Service - React SPA with nginx
+  frontend:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+      args:
+        VITE_CLERK_PUBLISHABLE_KEY: ${VITE_CLERK_PUBLISHABLE_KEY}
+        VITE_GEMINI_API_KEY: ${VITE_GEMINI_API_KEY}
+        VITE_IMAGE_KIT_ENDPOINT: ${VITE_IMAGE_KIT_ENDPOINT}
+        VITE_IMAGE_KIT_PUBLIC_KEY: ${VITE_IMAGE_KIT_PUBLIC_KEY}
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:3000}
+    container_name: talkgoose-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - talkgoose-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+
+  # Optional: MongoDB for local development
+  # Comment out if using MongoDB Atlas
+  # mongodb:
+  #   image: mongo:7
+  #   container_name: talkgoose-mongodb
+  #   restart: unless-stopped
+  #   ports:
+  #     - "27017:27017"
+  #   environment:
+  #     MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:-admin}
+  #     MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-password}
+  #   volumes:
+  #     - mongodb-data:/data/db
+  #   networks:
+  #     - talkgoose-network
+
+networks:
+  talkgoose-network:
+    driver: bridge
+
+# volumes:
+#   mongodb-data:
+#     driver: local

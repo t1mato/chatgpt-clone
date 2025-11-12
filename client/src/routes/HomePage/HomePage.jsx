@@ -13,8 +13,8 @@ const HomePage = () => {
 
       <div className="left">
         <h1>Talk Talk Goose</h1>
-        <h2>Supercharge your creativity and productivity</h2>
-        <h3>Hello this is an H3 text.</h3>
+        <h2>Waddle into smarter conversations.</h2>
+        <h3>Goose around with an AI that will answer your questions!</h3>
         <Link to="/dashboard" className="get-started-btn">
           Get Started
         </Link>
@@ -25,7 +25,7 @@ const HomePage = () => {
           <div className="bgContainer">
             <div className="bg"></div>
           </div>
-          <img src="/walking-duck.gif" alt="" className="bot" />
+          <img src="/goose-walk.gif" alt="" className="bot" />
           <div className="chat">
             <img 
               src={
@@ -38,19 +38,19 @@ const HomePage = () => {
             />
             <TypeAnimation 
               sequence={[
-                'Bob: We produce food for Ducks',
+                "What's your favorite food?",
                 2000, () => {
                   setTypingStatus("bot");
                 },
-                'Goose: We produce food for Geese',
+                'Cheese and quackers!',
                 2000, () => {
                   setTypingStatus("human2");
                 },
-                'We produce food for Swans',
+                'What language are you fluent in?',
                 2000, () => {
                   setTypingStatus("bot");
                 },
-                'We produce food for Chicken',
+                'Portu-geese!',
                 2000, () => {
                   setTypingStatus("human1");
                 },
