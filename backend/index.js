@@ -506,7 +506,7 @@ app.get("/api/upload", (req, res) => {
  * @param {Object} req.body.text - First message text
  * @returns {String} New chat ID
  */
-app.post("/api/chats", requireAuth(), async (req, res) => {
+app.post("/api/chats", requireAuth({ signInUrl: null }), async (req, res) => {
   const { userId } = getAuth(req);  // Extract authenticated user ID from Clerk token
   const { text } = req.body;         // First message text from client
 
@@ -650,7 +650,7 @@ app.post("/api/chats", requireAuth(), async (req, res) => {
  * ------------------
  * Returns all of the logged-in user's chat (chat list sidebar).
  */
-app.get("/api/userchats", requireAuth(), async (req, res) => {
+app.get("/api/userchats", requireAuth({ signInUrl: null }), async (req, res) => {
   const { userId } = getAuth(req);
 
   try {
@@ -681,7 +681,7 @@ app.get("/api/userchats", requireAuth(), async (req, res) => {
  * - After: 12KB for same chat (last 20 messages only)
  * - 80% reduction in payload size
  */
-app.get("/api/chats/:id", requireAuth(), async (req, res) => {
+app.get("/api/chats/:id", requireAuth({ signInUrl: null }), async (req, res) => {
   const { userId } = getAuth(req);
   const { limit = "20", before } = req.query;
   const messageLimit = parseInt(limit);
@@ -744,7 +744,7 @@ app.get("/api/chats/:id", requireAuth(), async (req, res) => {
  *
  * Performance: Avoids growing document size, scales indefinitely
  */
-app.put("/api/chats/:id", requireAuth(), async (req, res) => {
+app.put("/api/chats/:id", requireAuth({ signInUrl: null }), async (req, res) => {
   const { userId } = getAuth(req);
   const { question, answer, img } = req.body;
 
@@ -821,7 +821,7 @@ app.put("/api/chats/:id", requireAuth(), async (req, res) => {
  * Note: This endpoint is optional. The main GET /api/chats/:id already supports
  * pagination via query params. This endpoint exists for cleaner separation if needed.
  */
-app.get("/api/chats/:id/messages", requireAuth(), async (req, res) => {
+app.get("/api/chats/:id/messages", requireAuth({ signInUrl: null }), async (req, res) => {
   const { userId } = getAuth(req);
   const { before, limit = "20" } = req.query;
   const messageLimit = parseInt(limit);
