@@ -61,7 +61,7 @@ import UserChats from "./models/userChats.js"; // User's chat list for sidebar
 import Message from "./models/message.js";     // Individual messages (normalized)
 
 // Clerk authentication middleware
-import { requireAuth, getAuth } from "@clerk/express";
+import { clerkMiddleware, requireAuth, getAuth } from "@clerk/express";
 
 /**
  * ============================================================================
@@ -211,6 +211,14 @@ app.use("/api/", limiter);
  * app.use(express.json({ limit: '10mb' }))
  */
 app.use(express.json());
+
+/**
+ * Clerk Middleware
+ * ----------------
+ * Initializes Clerk authentication for all routes.
+ * Must be added before using requireAuth() on specific routes.
+ */
+app.use(clerkMiddleware());
 
 // ============================================================================
 // PERFORMANCE INSTRUMENTATION MIDDLEWARE
