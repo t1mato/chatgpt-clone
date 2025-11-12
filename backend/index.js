@@ -101,6 +101,9 @@ import { clerkMiddleware, requireAuth, getAuth } from "@clerk/express";
 const port = process.env.PORT || 3000;
 const app = express();
 
+// Trust Railway's proxy (required for rate limiting and client IP detection)
+app.set('trust proxy', true);
+
 // ============================================================================
 // MIDDLEWARE CONFIGURATION
 // ============================================================================
