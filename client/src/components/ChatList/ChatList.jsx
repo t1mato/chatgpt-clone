@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import './ChatList.css'
 import { useQuery } from '@tanstack/react-query'
+import { useAuth } from '@clerk/clerk-react'
 
 /**
  * ChatList Component
@@ -8,20 +9,24 @@ import { useQuery } from '@tanstack/react-query'
  * within the dashboard sidebar. Fetches recent chats using React Query.
  */
 const ChatList = () => {
+  const { getToken } = useAuth();
 
   /**
    * Fetch user's chat list from the backend API.
    * - Uses React Query to handle async data fetching and caching.
+   * - Includes Clerk authentication token in Authorization header.
    * - Automatically re-fetches data when the query key changes or becomes invalidated.
    */
   const { isPending, error, data } = useQuery({
     queryKey: ['userChats'], // uniquely identifies this query in the cache
-    queryFn: () => 
-      fetch(`${import.meta.env.VITE_API_URL}/api/userchats`, {
-        credentials: "include", // include cookies for authentication
-      }).then((res) =>
-        res.json(),
-      ),
+    queryFn: async () => {
+      const token = await getToken();
+      return fetch(`${import.meta.env.VITE_API_URL}/api/userchats`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }).then((res) => res.json());
+    },
   });
 
   // Render the chat list sidebar UI

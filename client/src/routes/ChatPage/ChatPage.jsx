@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "react-router-dom";
 import Markdown from "react-markdown";
 import { ImageKitProvider, Image } from "@imagekit/react"
+import { useAuth } from '@clerk/clerk-react'
 
 /**
  * ChatPage Component
@@ -14,6 +15,8 @@ import { ImageKitProvider, Image } from "@imagekit/react"
  * - Includes the <NewPrompt /> component for user input.
  */
 const ChatPage = () => {
+  const { getToken } = useAuth();
+
   // Extract current route path to derive chat ID (last segment of the URL)
   const path = useLocation().pathname;
   const chatId = path.split("/").pop();
@@ -22,13 +25,18 @@ const ChatPage = () => {
    * Fetch chat history using React Query.
    * - The query key ["chat", chatId] ensures caching is scoped per chat.
    * - Automatically refetches when chatId changes.
+   * - Includes Clerk authentication token in Authorization header.
    */
   const { isPending, error, data } = useQuery({
     queryKey: ["chat", chatId],
-    queryFn: () =>
-      fetch(`${import.meta.env.VITE_API_URL}/api/chats/${chatId}`, {
-        credentials: "include", // includes cookies foor authenticated requests
-      }).then((res) => res.json()),
+    queryFn: async () => {
+      const token = await getToken();
+      return fetch(`${import.meta.env.VITE_API_URL}/api/chats/${chatId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }).then((res) => res.json());
+    },
   });
 
   // Render chat interface and handle loading/error/data states

@@ -7,6 +7,7 @@ import Markdown from "react-markdown";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useChatSession } from "../../contexts/ChatSessionContext";
+import { useAuth } from '@clerk/clerk-react';
 
 const urlEndpoint = import.meta.env.VITE_IMAGE_KIT_ENDPOINT;
 
@@ -31,6 +32,8 @@ const urlEndpoint = import.meta.env.VITE_IMAGE_KIT_ENDPOINT;
  * @param {Object} data - Chat object from backend containing _id and history array
  */
 const NewPrompt = ({ data }) => {
+  const { getToken } = useAuth();
+
   // Separate state for input vs displayed question to handle auto-run scenarios
   // where we need to show the AI response without re-displaying the user's question
   const [input, setInput] = useState("");
@@ -92,11 +95,14 @@ const NewPrompt = ({ data }) => {
    *   submitted from a different route context
    */
   const mutation = useMutation({
-    mutationFn: () => {
+    mutationFn: async () => {
+      const token = await getToken();
       return fetch(`${import.meta.env.VITE_API_URL}/api/chats/${data._id}`, {
         method: "PUT",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({
           question: question.length ? question : undefined,
           answer,
